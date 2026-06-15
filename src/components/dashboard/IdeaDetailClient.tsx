@@ -1,0 +1,344 @@
+'use client'
+
+import { useState, useRef } from 'react'
+import Link from 'next/link'
+import { Check } from 'lucide-react'
+import toast from 'react-hot-toast'
+import type { ProductIdea, IdeaStatus } from '@/lib/types'
+
+const STATUS_STYLE: Record<IdeaStatus, { bg: string; color: string; label: string }> = {
+  idea:        { bg: '#d8e6d9', color: '#2a3d2b', label: 'Idea' },
+  in_progress: { bg: '#faeeda', color: '#633806', label: 'In progress' },
+  listed:      { bg: '#d0e8d1', color: '#1a4d1c', label: 'Listed' },
+  archived:    { bg: '#e8e6e1', color: '#5a5a58', label: 'Archived' },
+}
+
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: '11px',
+  fontWeight: 500,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color: 'var(--sb-charcoal)',
+  opacity: 0.55,
+  display: 'block',
+  marginBottom: '6px',
+}
+
+const CARD: React.CSSProperties = {
+  backgroundColor: '#fff',
+  border: '1px solid #d8e0d9',
+  borderRadius: '12px',
+  padding: '24px',
+}
+
+function competitionStyle(c: string): React.CSSProperties {
+  if (c === 'low') return { backgroundColor: '#d0e8d1', color: '#2a4d2c' }
+  if (c === 'medium') return { backgroundColor: '#faeeda', color: '#633806' }
+  return { backgroundColor: '#fce8e8', color: '#7f1d1d' }
+}
+
+export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
+  const [status, setStatus] = useState<IdeaStatus>(idea.status)
+  const [notes, setNotes] = useState(idea.notes ?? '')
+  const [notesSaving, setNotesSaving] = useState(false)
+  const [notesSaved, setNotesSaved] = useState(false)
+  const savedNotesRef = useRef(idea.notes ?? '')
+
+  const outline = idea.resource_outlines?.[0]
+  const seo = idea.seo_data?.[0]
+  const currentStatus = STATUS_STYLE[status]
+
+  async function handleStatusChange(newStatus: IdeaStatus) {
+    const prev = status
+    setStatus(newStatus)
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Status updated')
+    } catch {
+      setStatus(prev)
+      toast.error('Failed to update status')
+    }
+  }
+
+  async function handleNotesBlur() {
+    if (notes === savedNotesRef.current) return
+    setNotesSaving(true)
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      })
+      if (!res.ok) throw new Error()
+      savedNotesRef.current = notes
+      setNotesSaved(true)
+      setTimeout(() => setNotesSaved(false), 2000)
+    } catch {
+      toast.error('Failed to save notes')
+    } finally {
+      setNotesSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div>
+        <Link href="/ideas" style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.6, textDecoration: 'none' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--sb-sage-dark)'; e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--sb-charcoal)'; e.currentTarget.style.opacity = '0.6' }}
+        >
+          ← Back to ideas
+        </Link>
+
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: 500, margin: '8px 0 14px 0', color: 'var(--sb-charcoal)' }}>
+          {idea.title}
+        </h1>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+          <select
+            value={status}
+            onChange={e => handleStatusChange(e.target.value as IdeaStatus)}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              fontSize: '13px',
+              fontWeight: 500,
+              border: '1px solid transparent',
+              backgroundColor: currentStatus.bg,
+              color: currentStatus.color,
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="idea">Idea</option>
+            <option value="in_progress">In progress</option>
+            <option value="listed">Listed</option>
+            <option value="archived">Archived</option>
+          </select>
+
+          <span style={{ fontSize: '13px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#d0e8d1', color: '#2a4d2c' }}>
+            {idea.suggested_price}
+          </span>
+          <span style={{ fontSize: '13px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: 'var(--sb-sage-light)', color: '#2a3d2b' }}>
+            {idea.product_type}
+          </span>
+          <span style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.5 }}>
+            {new Date(idea.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        </div>
+      </div>
+
+      {/* Three column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ marginTop: '32px' }}>
+
+        {/* Column 1 — Product details */}
+        <div style={CARD}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 20px 0', color: 'var(--sb-charcoal)' }}>
+            Product details
+          </h2>
+
+          <div style={{ marginBottom: '16px' }}>
+            <span style={SECTION_LABEL}>Description</span>
+            <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--sb-charcoal)', margin: 0 }}>{idea.description}</p>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <span style={SECTION_LABEL}>Hook</span>
+            <p style={{ fontSize: '14px', fontStyle: 'italic', color: 'var(--sb-charcoal)', opacity: 0.75, margin: 0 }}>
+              &ldquo;{idea.hook}&rdquo;
+            </p>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <span style={SECTION_LABEL}>TPT tags</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {idea.tpt_tags.map(tag => (
+                <span key={tag} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#f0eee8', color: '#5a5a58' }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #f0eee8', margin: '16px 0' }} />
+
+          <div>
+            <span style={SECTION_LABEL}>Your notes</span>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              onBlur={handleNotesBlur}
+              rows={4}
+              placeholder="Add your notes here..."
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                border: '1px solid #d8e0d9',
+                borderRadius: '6px',
+                padding: '8px',
+                fontSize: '13px',
+                resize: 'vertical',
+                outline: 'none',
+                color: 'var(--sb-charcoal)',
+                fontFamily: 'Inter, sans-serif',
+              }}
+              onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--sb-sage)'}
+            />
+            <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: notesSaved ? 'var(--sb-sage-dark)' : 'var(--sb-charcoal)', opacity: notesSaving || notesSaved ? 1 : 0, minHeight: '18px' }}>
+              {notesSaving ? 'Saving…' : notesSaved ? 'Saved ✓' : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* Column 2 — Resource outline */}
+        <div style={CARD}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 20px 0', color: 'var(--sb-charcoal)' }}>
+            Resource outline
+          </h2>
+
+          {outline ? (
+            <div>
+              <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '15px', fontWeight: 500, margin: '0 0 16px 0', color: 'var(--sb-charcoal)' }}>
+                {outline.pack_title}
+              </p>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={SECTION_LABEL}>Learning outcomes</span>
+                <ol style={{ margin: 0, paddingLeft: '18px' }}>
+                  {outline.learning_outcomes.map((o, i) => (
+                    <li key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--sb-charcoal)', marginBottom: '2px' }}>{o}</li>
+                  ))}
+                </ol>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={SECTION_LABEL}>EYLF links</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {outline.eylf_links.map((e, i) => (
+                    <span key={i} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '9999px', backgroundColor: 'var(--sb-sage-light)', color: '#2a3d2b' }}>
+                      {e}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={SECTION_LABEL}>Activities</span>
+                {outline.activities.map((a, i) => (
+                  <div key={i} style={{ paddingBottom: '10px', marginBottom: '10px', borderBottom: i < outline.activities.length - 1 ? '1px solid #f5f3ee' : 'none' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 500, margin: '0 0 2px 0', color: 'var(--sb-charcoal)' }}>{a.name}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--sb-charcoal)', opacity: 0.7, margin: '0 0 2px 0' }}>{a.description}</p>
+                    <p style={{ fontSize: '11px', fontStyle: 'italic', color: 'var(--sb-charcoal)', opacity: 0.5, margin: 0 }}>Materials: {a.materials}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={SECTION_LABEL}>Printables</span>
+                <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                  {outline.printables.map((p, i) => (
+                    <li key={i} style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--sb-charcoal)' }}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <span style={SECTION_LABEL}>Differentiation</span>
+                <div style={{ backgroundColor: '#f5f3ee', borderRadius: '6px', padding: '10px', fontSize: '12px', lineHeight: 1.6, color: 'var(--sb-charcoal)' }}>
+                  {outline.differentiation_tips}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: '14px', color: 'var(--sb-charcoal)', opacity: 0.5, margin: '0 0 4px 0' }}>No outline saved</p>
+              <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: 0 }}>Generate a new idea to include an outline.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Column 3 — SEO */}
+        <div style={CARD}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 20px 0', color: 'var(--sb-charcoal)' }}>
+            SEO &amp; keywords
+          </h2>
+
+          {seo ? (
+            <div>
+              <div style={{ marginBottom: '16px' }}>
+                <span style={SECTION_LABEL}>Primary keyword</span>
+                <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--sb-sage-dark)', margin: 0 }}>{seo.primary_keyword}</p>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={SECTION_LABEL}>Title formula</span>
+                <p style={{ fontSize: '12px', fontStyle: 'italic', color: 'var(--sb-charcoal)', opacity: 0.7, margin: 0 }}>{seo.title_formula}</p>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{ ...SECTION_LABEL, marginBottom: '8px' }}>Keywords</span>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr>
+                        {['Keyword', 'Intent', 'Competition', 'AU/NZ'].map(h => (
+                          <th key={h} style={{ textAlign: 'left', padding: '4px 6px', color: 'var(--sb-charcoal)', opacity: 0.5, fontWeight: 500, whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seo.keywords.map((kw, i) => (
+                        <tr key={i} style={{ borderTop: '1px solid #f0eee8' }}>
+                          <td style={{ padding: '6px', color: 'var(--sb-charcoal)' }}>{kw.keyword}</td>
+                          <td style={{ padding: '6px' }}>
+                            <span style={{
+                              fontSize: '11px', padding: '2px 6px', borderRadius: '9999px',
+                              backgroundColor: kw.intent === 'buyer' ? 'var(--sb-sage)' : 'transparent',
+                              color: kw.intent === 'buyer' ? '#1a2e1b' : '#2a4d2c',
+                              border: kw.intent === 'buyer' ? 'none' : '1px solid var(--sb-sage)',
+                            }}>
+                              {kw.intent}
+                            </span>
+                          </td>
+                          <td style={{ padding: '6px' }}>
+                            <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '9999px', ...competitionStyle(kw.competition) }}>
+                              {kw.competition}
+                            </span>
+                          </td>
+                          <td style={{ padding: '6px', textAlign: 'center' }}>
+                            {kw.auNzRelevance === 'high'
+                              ? <Check size={13} style={{ color: 'var(--sb-sage-dark)' }} />
+                              : <span style={{ color: '#bbb' }}>—</span>
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <span style={SECTION_LABEL}>Description opener</span>
+                <blockquote style={{ borderLeft: '3px solid var(--sb-sage)', paddingLeft: '12px', margin: 0, fontSize: '12px', fontStyle: 'italic', lineHeight: 1.6, color: 'var(--sb-charcoal)', opacity: 0.8 }}>
+                  {seo.description_opener}
+                </blockquote>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: '14px', color: 'var(--sb-charcoal)', opacity: 0.5, margin: '0 0 4px 0' }}>No SEO data saved</p>
+              <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: 0 }}>Generate a new idea to include SEO data.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
