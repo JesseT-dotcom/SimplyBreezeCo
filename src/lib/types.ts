@@ -28,8 +28,17 @@ export interface ProductIdea {
   status: IdeaStatus
   notes?: string
   target_launch_date?: string | null
+  listing_copy?: ListingCopy | null
   resource_outlines?: ResourceOutline[]
   seo_data?: SeoData[]
+}
+
+export type ListingCopy = {
+  listing_title: string
+  description: string
+  etsy_tags: string[]
+  tpt_tags: string[]
+  suggested_price: string
 }
 
 export type CalendarIdea = {
