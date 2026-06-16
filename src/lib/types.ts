@@ -29,6 +29,7 @@ export interface ProductIdea {
   notes?: string
   target_launch_date?: string | null
   listing_copy?: ListingCopy | null
+  canva_brief?: CanvaBrief | null
   resource_outlines?: ResourceOutline[]
   seo_data?: SeoData[]
 }
@@ -39,6 +40,17 @@ export type ListingCopy = {
   etsy_tags: string[]
   tpt_tags: string[]
   suggested_price: string
+}
+
+export type CanvaBrief = {
+  cover_title: string
+  subtitle: string
+  colour_palette: string
+  font_suggestions: string
+  layout_notes: string
+  illustration_notes: string
+  mood: string
+  size_spec: string
 }
 
 export type CalendarIdea = {

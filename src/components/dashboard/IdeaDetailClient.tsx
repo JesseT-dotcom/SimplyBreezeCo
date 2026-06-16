@@ -2,9 +2,9 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { Check, ImageIcon, Loader2, Calendar, Copy, FileText } from 'lucide-react'
+import { Check, ImageIcon, Loader2, Calendar, Copy, FileText, Palette } from 'lucide-react'
 import toast from 'react-hot-toast'
-import type { ProductIdea, IdeaStatus, ListingCopy } from '@/lib/types'
+import type { ProductIdea, IdeaStatus, ListingCopy, CanvaBrief } from '@/lib/types'
 
 type IllusResult = { id: string; imageUrl: string; promptText: string }
 
@@ -83,6 +83,10 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
   const [listing, setListing] = useState<ListingCopy | null>(idea.listing_copy ?? null)
   const [listingLoading, setListingLoading] = useState(false)
   const [listingError, setListingError] = useState<string | null>(null)
+
+  const [canvaBrief, setCanvaBrief] = useState<CanvaBrief | null>(idea.canva_brief ?? null)
+  const [canvaLoading, setCanvaLoading] = useState(false)
+  const [canvaError, setCanvaError] = useState<string | null>(null)
 
   const outline = idea.resource_outlines?.[0]
   const seo = idea.seo_data?.[0]
@@ -170,6 +174,32 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
       setListingError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
       setListingLoading(false)
+    }
+  }
+
+  async function handleGenerateCanvaBrief() {
+    setCanvaLoading(true)
+    setCanvaError(null)
+    try {
+      const res = await fetch('/api/generate-canva-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ideaId: idea.id,
+          title: idea.title,
+          description: idea.description,
+          age_group: idea.age_group,
+          product_type: idea.product_type,
+          curriculum_area: idea.curriculum_areas?.join(', '),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Generation failed')
+      setCanvaBrief(data)
+    } catch (err) {
+      setCanvaError(err instanceof Error ? err.message : 'Generation failed')
+    } finally {
+      setCanvaLoading(false)
     }
   }
 
@@ -760,6 +790,218 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
               </div>
               <p style={{ fontSize: '22px', fontWeight: 600, color: 'var(--sb-sage-dark)', margin: 0, fontFamily: "'Playfair Display', serif" }}>
                 {listing.suggested_price}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Canva brief panel */}
+      <div style={{ ...CARD, marginTop: '24px' }}>
+        {/* Panel header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: canvaBrief ? '20px' : '0' }}>
+          <div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 4px 0', color: 'var(--sb-charcoal)' }}>
+              Canva Cover Brief
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>
+              Design direction for your Canva cover page
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            {canvaBrief && (
+              <CopyButton text={[
+                `COVER TITLE: ${canvaBrief.cover_title}`,
+                `SUBTITLE: ${canvaBrief.subtitle}`,
+                `COLOUR PALETTE: ${canvaBrief.colour_palette}`,
+                `FONT SUGGESTIONS: ${canvaBrief.font_suggestions}`,
+                `LAYOUT NOTES: ${canvaBrief.layout_notes}`,
+                `ILLUSTRATION NOTES: ${canvaBrief.illustration_notes}`,
+                `MOOD: ${canvaBrief.mood}`,
+                `SIZE SPEC: ${canvaBrief.size_spec}`,
+              ].join('\n\n')} />
+            )}
+            <button
+              onClick={canvaBrief ? () => { setCanvaBrief(null); handleGenerateCanvaBrief() } : handleGenerateCanvaBrief}
+              disabled={canvaLoading}
+              style={{
+                backgroundColor: canvaLoading ? 'var(--sb-sage-light)' : 'var(--sb-sage)',
+                color: '#1a2e1b',
+                border: 'none', borderRadius: '8px',
+                padding: '8px 16px', fontSize: '13px', fontWeight: 500,
+                cursor: canvaLoading ? 'default' : 'pointer',
+                fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
+              }}
+            >
+              {canvaBrief ? 'Regenerate' : 'Generate Canva brief'}
+            </button>
+          </div>
+        </div>
+
+        {/* Error */}
+        {canvaError && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+            backgroundColor: 'var(--sb-rose-light)', border: '1px solid var(--sb-rose)',
+            borderRadius: '8px', padding: '10px 14px', marginTop: '16px',
+          }}>
+            <p style={{ fontSize: '13px', color: '#7f1d1d', margin: 0 }}>{canvaError}</p>
+            <button
+              onClick={handleGenerateCanvaBrief}
+              style={{
+                flexShrink: 0, backgroundColor: 'var(--sb-rose)', color: '#7f1d1d',
+                border: 'none', borderRadius: '6px', padding: '6px 12px',
+                fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {/* Loading */}
+        {canvaLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: '12px' }}>
+            <Loader2 size={28} style={{ color: 'var(--sb-sage-dark)', animation: 'spin 1s linear infinite' }} />
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>Writing your design brief…</p>
+            <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!canvaLoading && !canvaBrief && !canvaError && (
+          <div style={{
+            border: '2px dashed #d8e0d9', borderRadius: '10px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '48px 24px', gap: '10px', marginTop: '20px',
+          }}>
+            <Palette size={32} style={{ color: 'var(--sb-sage-dark)', opacity: 0.4 }} />
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: 0 }}>
+              No Canva brief yet — click Generate to create one
+            </p>
+          </div>
+        )}
+
+        {/* Results */}
+        {!canvaLoading && canvaBrief && (
+          <div>
+            {/* Copy full brief button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+              <CopyButton text={[
+                `COVER TITLE: ${canvaBrief.cover_title}`,
+                `SUBTITLE: ${canvaBrief.subtitle}`,
+                `COLOUR PALETTE: ${canvaBrief.colour_palette}`,
+                `FONT SUGGESTIONS: ${canvaBrief.font_suggestions}`,
+                `LAYOUT NOTES: ${canvaBrief.layout_notes}`,
+                `ILLUSTRATION NOTES: ${canvaBrief.illustration_notes}`,
+                `MOOD: ${canvaBrief.mood}`,
+                `SIZE SPEC: ${canvaBrief.size_spec}`,
+              ].join('\n\n')} />
+            </div>
+
+            {/* Cover title */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Cover title</span>
+                <CopyButton text={canvaBrief.cover_title} />
+              </div>
+              <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--sb-charcoal)', margin: 0, lineHeight: 1.4, fontFamily: "'Playfair Display', serif" }}>
+                {canvaBrief.cover_title}
+              </p>
+            </div>
+
+            {/* Subtitle */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Subtitle / tagline</span>
+                <CopyButton text={canvaBrief.subtitle} />
+              </div>
+              <p style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--sb-charcoal)', opacity: 0.8, margin: 0 }}>
+                {canvaBrief.subtitle}
+              </p>
+            </div>
+
+            {/* Colour palette */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Colour palette</span>
+                <CopyButton text={canvaBrief.colour_palette} />
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                {[
+                  { label: 'Dusty sage', hex: '#B5C9B7' },
+                  { label: 'Warm linen', hex: '#EDE8DF' },
+                  { label: 'Dusty rose', hex: '#D4A5A5' },
+                  { label: 'Soft charcoal', hex: '#3D3D3D' },
+                  { label: 'Off-white cream', hex: '#FAF8F5' },
+                ].map(({ label, hex }) => (
+                  <div key={hex} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--sb-charcoal)', opacity: 0.7 }}>
+                    <div style={{ width: '14px', height: '14px', borderRadius: '3px', backgroundColor: hex, border: '1px solid #d8e0d9', flexShrink: 0 }} />
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--sb-charcoal)', margin: 0 }}>
+                {canvaBrief.colour_palette}
+              </p>
+            </div>
+
+            {/* Font suggestions */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Font suggestions</span>
+                <CopyButton text={canvaBrief.font_suggestions} />
+              </div>
+              <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--sb-charcoal)', margin: 0 }}>
+                {canvaBrief.font_suggestions}
+              </p>
+            </div>
+
+            {/* Layout notes */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Layout notes</span>
+                <CopyButton text={canvaBrief.layout_notes} />
+              </div>
+              <div style={{ backgroundColor: '#f5f3ee', borderRadius: '6px', padding: '10px 12px', fontSize: '13px', lineHeight: 1.6, color: 'var(--sb-charcoal)' }}>
+                {canvaBrief.layout_notes}
+              </div>
+            </div>
+
+            {/* Illustration notes */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Illustration notes</span>
+                <CopyButton text={canvaBrief.illustration_notes} />
+              </div>
+              <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--sb-charcoal)', margin: 0 }}>
+                {canvaBrief.illustration_notes}
+              </p>
+            </div>
+
+            {/* Mood */}
+            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Mood</span>
+                <CopyButton text={canvaBrief.mood} />
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {canvaBrief.mood.split(',').map(m => m.trim()).filter(Boolean).map(m => (
+                  <span key={m} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '9999px', backgroundColor: '#EDE8DF', color: '#5a5050' }}>
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Size spec */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                <span style={SECTION_LABEL}>Size spec</span>
+                <CopyButton text={canvaBrief.size_spec} />
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', margin: 0, fontWeight: 500 }}>
+                {canvaBrief.size_spec}
               </p>
             </div>
           </div>
