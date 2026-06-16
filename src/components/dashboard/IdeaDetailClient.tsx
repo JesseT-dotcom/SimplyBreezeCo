@@ -2,9 +2,11 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { Check } from 'lucide-react'
+import { Check, ImageIcon, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { ProductIdea, IdeaStatus } from '@/lib/types'
+
+type IllusResult = { id: string; imageUrl: string; promptText: string }
 
 const STATUS_STYLE: Record<IdeaStatus, { bg: string; color: string; label: string }> = {
   idea:        { bg: '#d8e6d9', color: '#2a3d2b', label: 'Idea' },
@@ -44,6 +46,10 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
   const [notesSaved, setNotesSaved] = useState(false)
   const savedNotesRef = useRef(idea.notes ?? '')
 
+  const [illus, setIllus] = useState<IllusResult | null>(null)
+  const [illusLoading, setIllusLoading] = useState(false)
+  const [illusError, setIllusError] = useState<string | null>(null)
+
   const outline = idea.resource_outlines?.[0]
   const seo = idea.seo_data?.[0]
   const currentStatus = STATUS_STYLE[status]
@@ -62,6 +68,31 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
     } catch {
       setStatus(prev)
       toast.error('Failed to update status')
+    }
+  }
+
+  async function handleGenerateIllustration() {
+    setIllusLoading(true)
+    setIllusError(null)
+    try {
+      const res = await fetch('/api/generate-illustration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: idea.title,
+          ageGroup: idea.age_group ?? '3–5 yrs',
+          learningObjective: idea.description,
+          sceneContext: idea.product_type,
+          resourceId: idea.id,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Generation failed')
+      setIllus(data)
+    } catch (err) {
+      setIllusError(err instanceof Error ? err.message : 'Generation failed')
+    } finally {
+      setIllusLoading(false)
     }
   }
 
@@ -338,6 +369,152 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Illustration panel */}
+      <div style={{ ...CARD, marginTop: '24px' }}>
+        {/* Panel header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 4px 0', color: 'var(--sb-charcoal)' }}>
+              Illustration
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>
+              Generate a SimplyBreeze-style illustration for this resource
+            </p>
+          </div>
+          <button
+            onClick={illus ? () => { setIllus(null); handleGenerateIllustration() } : handleGenerateIllustration}
+            disabled={illusLoading}
+            style={{
+              flexShrink: 0,
+              backgroundColor: illusLoading ? 'var(--sb-sage-light)' : 'var(--sb-sage)',
+              color: '#1a2e1b',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: illusLoading ? 'default' : 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {illus ? 'Generate another' : 'Generate illustration'}
+          </button>
+        </div>
+
+        {/* Error bar */}
+        {illusError && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            backgroundColor: 'var(--sb-rose-light)',
+            border: '1px solid var(--sb-rose)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            marginBottom: '16px',
+          }}>
+            <p style={{ fontSize: '13px', color: '#7f1d1d', margin: 0 }}>{illusError}</p>
+            <button
+              onClick={handleGenerateIllustration}
+              style={{
+                flexShrink: 0,
+                backgroundColor: 'var(--sb-rose)',
+                color: '#7f1d1d',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {/* Loading state */}
+        {illusLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: '12px' }}>
+            <Loader2 size={28} style={{ color: 'var(--sb-sage-dark)', animation: 'spin 1s linear infinite' }} />
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>This takes 15–30 seconds…</p>
+            <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!illusLoading && !illus && (
+          <div style={{
+            border: '2px dashed #d8e0d9',
+            borderRadius: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '48px 24px',
+            gap: '10px',
+          }}>
+            <ImageIcon size={32} style={{ color: 'var(--sb-sage-dark)', opacity: 0.4 }} />
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: 0 }}>
+              No illustration yet — click Generate to create one
+            </p>
+          </div>
+        )}
+
+        {/* Success: two-column layout */}
+        {!illusLoading && illus && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Image */}
+            <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #d8e0d9', aspectRatio: '1 / 1', backgroundColor: '#f5f3ee' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={illus.imageUrl}
+                alt="Generated SimplyBreeze illustration"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </div>
+
+            {/* Prompt + actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <span style={SECTION_LABEL}>Illustration prompt</span>
+                <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--sb-charcoal)', margin: 0 }}>
+                  {illus.promptText}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto' }}>
+                <a
+                  href={illus.imageUrl}
+                  download={`${idea.title.replace(/\s+/g, '-').toLowerCase()}-illustration.jpg`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-block',
+                    backgroundColor: 'var(--sb-sage)',
+                    color: '#1a2e1b',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Download image
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
