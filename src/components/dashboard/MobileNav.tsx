@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Sparkles, BookOpen } from 'lucide-react'
+import { LayoutDashboard, Sparkles, BookOpen, CalendarDays } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/generate', label: 'Generate', icon: Sparkles },
   { href: '/ideas', label: 'Ideas', icon: BookOpen },
+  { href: '/calendar', label: 'Calendar', icon: CalendarDays },
 ]
 
 export default function MobileNav() {

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { Check, ImageIcon, Loader2 } from 'lucide-react'
+import { Check, ImageIcon, Loader2, Calendar } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { ProductIdea, IdeaStatus } from '@/lib/types'
 
@@ -46,6 +46,8 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
   const [notesSaved, setNotesSaved] = useState(false)
   const savedNotesRef = useRef(idea.notes ?? '')
 
+  const [launchDate, setLaunchDate] = useState(idea.target_launch_date ?? '')
+
   const [illus, setIllus] = useState<IllusResult | null>(null)
   const [illusLoading, setIllusLoading] = useState(false)
   const [illusError, setIllusError] = useState<string | null>(null)
@@ -68,6 +70,23 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
     } catch {
       setStatus(prev)
       toast.error('Failed to update status')
+    }
+  }
+
+  async function handleLaunchDateChange(newDate: string) {
+    const prev = launchDate
+    setLaunchDate(newDate)
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_launch_date: newDate || null }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(newDate ? 'Launch date set' : 'Launch date cleared')
+    } catch {
+      setLaunchDate(prev)
+      toast.error('Failed to update launch date')
     }
   }
 
@@ -162,6 +181,33 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
           <span style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.5 }}>
             {new Date(idea.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '3px 10px',
+            borderRadius: '9999px',
+            border: '1px solid #d8e0d9',
+            backgroundColor: launchDate ? 'var(--sb-linen)' : 'transparent',
+          }}>
+            <Calendar size={12} style={{ color: 'var(--sb-charcoal)', opacity: 0.5, flexShrink: 0 }} />
+            <input
+              type="date"
+              value={launchDate}
+              onChange={e => handleLaunchDateChange(e.target.value)}
+              style={{
+                fontSize: '13px',
+                border: 'none',
+                background: 'transparent',
+                color: launchDate ? 'var(--sb-charcoal)' : '#aaa',
+                cursor: 'pointer',
+                outline: 'none',
+                fontFamily: 'Inter, sans-serif',
+                padding: 0,
+              }}
+            />
+          </div>
         </div>
       </div>
 

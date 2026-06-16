@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Sparkles, BookOpen } from 'lucide-react'
+import { LayoutDashboard, Sparkles, BookOpen, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface NavItem {
@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
   { href: '/generate', label: 'Generate', icon: <Sparkles size={18} /> },
   { href: '/ideas', label: 'Ideas', icon: <BookOpen size={18} /> },
+  { href: '/calendar', label: 'Calendar', icon: <CalendarDays size={18} /> },
 ]
 
 export default function Sidebar({ userEmail }: { userEmail: string }) {

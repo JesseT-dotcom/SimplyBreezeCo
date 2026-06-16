@@ -44,6 +44,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
 const patchSchema = z.object({
   status: z.enum(['idea', 'in_progress', 'listed', 'archived']).optional(),
   notes: z.string().optional(),
+  target_launch_date: z.string().nullable().optional(),
 })
 
 export async function PATCH(req: Request, { params }: RouteContext) {

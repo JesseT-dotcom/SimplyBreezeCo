@@ -27,8 +27,19 @@ export interface ProductIdea {
   tpt_tags: string[]
   status: IdeaStatus
   notes?: string
+  target_launch_date?: string | null
   resource_outlines?: ResourceOutline[]
   seo_data?: SeoData[]
+}
+
+export type CalendarIdea = {
+  id: string
+  title: string
+  status: IdeaStatus
+  product_type: string
+  age_group: string
+  target_launch_date: string
+  hasIllustration: boolean
 }
 
 export interface ResourceOutline {
