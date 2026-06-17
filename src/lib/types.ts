@@ -28,18 +28,23 @@ export interface ProductIdea {
   status: IdeaStatus
   notes?: string
   target_launch_date?: string | null
-  listing_copy?: ListingCopy | null
+  listing_copy?: ListingCopyStore | null
   canva_brief?: CanvaBrief | null
   resource_outlines?: ResourceOutline[]
   seo_data?: SeoData[]
 }
 
-export type ListingCopy = {
+export type PlatformListing = {
   listing_title: string
   description: string
-  etsy_tags: string[]
-  tpt_tags: string[]
-  suggested_price: string
+  etsy_tags?: string[]
+  tpt_tags?: string[]
+  price_aud: string
+}
+
+export type ListingCopyStore = {
+  etsy?: PlatformListing
+  tpt?: PlatformListing
 }
 
 export type CanvaBrief = {

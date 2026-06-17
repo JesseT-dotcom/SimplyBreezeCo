@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { Check, ImageIcon, Loader2, Calendar, Copy, FileText, Palette } from 'lucide-react'
 import toast from 'react-hot-toast'
-import type { ProductIdea, IdeaStatus, ListingCopy, CanvaBrief } from '@/lib/types'
+import type { ProductIdea, IdeaStatus, PlatformListing, ListingCopyStore, CanvaBrief } from '@/lib/types'
 
 type IllusResult = { id: string; imageUrl: string; promptText: string }
 
@@ -80,7 +80,14 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
   const [illusLoading, setIllusLoading] = useState(false)
   const [illusError, setIllusError] = useState<string | null>(null)
 
-  const [listing, setListing] = useState<ListingCopy | null>(idea.listing_copy ?? null)
+  const [listingPlatform, setListingPlatform] = useState<'etsy' | 'tpt'>('etsy')
+  const [listingCopies, setListingCopies] = useState<ListingCopyStore>(() => {
+    const stored = idea.listing_copy
+    if (stored && typeof stored === 'object' && ('etsy' in stored || 'tpt' in stored)) {
+      return stored as ListingCopyStore
+    }
+    return {}
+  })
   const [listingLoading, setListingLoading] = useState(false)
   const [listingError, setListingError] = useState<string | null>(null)
 
@@ -151,7 +158,7 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
     }
   }
 
-  async function handleGenerateListing() {
+  async function handleGenerateListing(platform: 'etsy' | 'tpt' = listingPlatform) {
     setListingLoading(true)
     setListingError(null)
     try {
@@ -165,11 +172,12 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
           ageGroup: idea.age_group,
           productType: idea.product_type,
           curriculumAreas: idea.curriculum_areas,
+          platform,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-      setListing(data)
+      const data: PlatformListing = await res.json()
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Generation failed')
+      setListingCopies(prev => ({ ...prev, [platform]: data }))
     } catch (err) {
       setListingError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
@@ -654,7 +662,7 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
       {/* Listing copy panel */}
       <div style={{ ...CARD, marginTop: '24px' }}>
         {/* Panel header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: listing ? '20px' : '0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
           <div>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 4px 0', color: 'var(--sb-charcoal)' }}>
               Listing Copy
@@ -664,7 +672,7 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
             </p>
           </div>
           <button
-            onClick={listing ? () => { setListing(null); handleGenerateListing() } : handleGenerateListing}
+            onClick={() => handleGenerateListing(listingPlatform)}
             disabled={listingLoading}
             style={{
               flexShrink: 0,
@@ -676,8 +684,33 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
               fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
             }}
           >
-            {listing ? 'Regenerate' : 'Generate listing copy'}
+            {listingCopies[listingPlatform] ? 'Regenerate' : 'Generate listing copy'}
           </button>
+        </div>
+
+        {/* Platform toggle */}
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', backgroundColor: '#f5f3ee', borderRadius: '8px', padding: '3px', width: 'fit-content' }}>
+          {(['etsy', 'tpt'] as const).map(pl => (
+            <button
+              key={pl}
+              onClick={() => { setListingPlatform(pl); setListingError(null) }}
+              style={{
+                padding: '5px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 500,
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                backgroundColor: listingPlatform === pl ? '#fff' : 'transparent',
+                color: listingPlatform === pl ? 'var(--sb-charcoal)' : '#888',
+                boxShadow: listingPlatform === pl ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              {pl === 'etsy' ? 'Etsy' : 'TPT'}
+            </button>
+          ))}
         </div>
 
         {/* Error */}
@@ -685,11 +718,11 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
             backgroundColor: 'var(--sb-rose-light)', border: '1px solid var(--sb-rose)',
-            borderRadius: '8px', padding: '10px 14px', marginTop: '16px',
+            borderRadius: '8px', padding: '10px 14px', marginBottom: '16px',
           }}>
             <p style={{ fontSize: '13px', color: '#7f1d1d', margin: 0 }}>{listingError}</p>
             <button
-              onClick={handleGenerateListing}
+              onClick={() => handleGenerateListing(listingPlatform)}
               style={{
                 flexShrink: 0, backgroundColor: 'var(--sb-rose)', color: '#7f1d1d',
                 border: 'none', borderRadius: '6px', padding: '6px 12px',
@@ -705,95 +738,90 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
         {listingLoading && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: '12px' }}>
             <Loader2 size={28} style={{ color: 'var(--sb-sage-dark)', animation: 'spin 1s linear infinite' }} />
-            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>Writing your listing copy…</p>
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>Writing your {listingPlatform === 'etsy' ? 'Etsy' : 'TPT'} listing…</p>
             <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
           </div>
         )}
 
         {/* Empty state */}
-        {!listingLoading && !listing && !listingError && (
+        {!listingLoading && !listingCopies[listingPlatform] && !listingError && (
           <div style={{
             border: '2px dashed #d8e0d9', borderRadius: '10px',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '48px 24px', gap: '10px', marginTop: '20px',
+            padding: '48px 24px', gap: '10px',
           }}>
             <FileText size={32} style={{ color: 'var(--sb-sage-dark)', opacity: 0.4 }} />
             <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: 0 }}>
-              No listing copy yet — click Generate to create one
+              No {listingPlatform === 'etsy' ? 'Etsy' : 'TPT'} listing yet — click Generate to create one
             </p>
           </div>
         )}
 
         {/* Results */}
-        {!listingLoading && listing && (
-          <div>
-            {/* Listing title */}
-            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                <span style={SECTION_LABEL}>Listing title</span>
-                <CopyButton text={listing.listing_title} />
-              </div>
-              <p style={{ fontSize: '15px', fontWeight: 500, color: 'var(--sb-charcoal)', margin: 0, lineHeight: 1.4 }}>
-                {listing.listing_title}
-              </p>
-              <p style={{ fontSize: '11px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: '4px 0 0 0' }}>
-                {listing.listing_title.length} / 60 characters
-              </p>
-            </div>
-
-            {/* Description */}
-            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                <span style={SECTION_LABEL}>Description</span>
-                <CopyButton text={listing.description} />
-              </div>
-              <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--sb-charcoal)', margin: 0 }}>
-                {listing.description}
-              </p>
-            </div>
-
-            {/* Etsy tags */}
-            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                <span style={SECTION_LABEL}>Etsy tags</span>
-                <CopyButton text={listing.etsy_tags.join(', ')} />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {listing.etsy_tags.map(tag => (
-                  <span key={tag} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '9999px', backgroundColor: 'var(--sb-sage-light)', color: '#2a3d2b' }}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* TPT tags */}
-            <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                <span style={SECTION_LABEL}>TPT tags</span>
-                <CopyButton text={listing.tpt_tags.join(', ')} />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {listing.tpt_tags.map(tag => (
-                  <span key={tag} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '9999px', backgroundColor: '#EDE8DF', color: '#5a5050' }}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Suggested price */}
+        {!listingLoading && (() => {
+          const listing = listingCopies[listingPlatform]
+          if (!listing) return null
+          const titleMax = listingPlatform === 'etsy' ? 60 : 70
+          const tags = listingPlatform === 'etsy' ? listing.etsy_tags : listing.tpt_tags
+          const tagBg = listingPlatform === 'etsy' ? 'var(--sb-sage-light)' : '#EDE8DF'
+          const tagColor = listingPlatform === 'etsy' ? '#2a3d2b' : '#5a5050'
+          return (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                <span style={SECTION_LABEL}>Suggested price</span>
-                <CopyButton text={listing.suggested_price} />
+              {/* Listing title */}
+              <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                  <span style={SECTION_LABEL}>Listing title</span>
+                  <CopyButton text={listing.listing_title} />
+                </div>
+                <p style={{ fontSize: '15px', fontWeight: 500, color: 'var(--sb-charcoal)', margin: 0, lineHeight: 1.4 }}>
+                  {listing.listing_title}
+                </p>
+                <p style={{ fontSize: '11px', color: listing.listing_title.length > titleMax ? '#c0392b' : 'var(--sb-charcoal)', opacity: listing.listing_title.length > titleMax ? 1 : 0.4, margin: '4px 0 0 0' }}>
+                  {listing.listing_title.length} / {titleMax} characters
+                </p>
               </div>
-              <p style={{ fontSize: '22px', fontWeight: 600, color: 'var(--sb-sage-dark)', margin: 0, fontFamily: "'Playfair Display', serif" }}>
-                {listing.suggested_price}
-              </p>
+
+              {/* Description */}
+              <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                  <span style={SECTION_LABEL}>Description</span>
+                  <CopyButton text={listing.description} />
+                </div>
+                <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--sb-charcoal)', margin: 0, whiteSpace: 'pre-line' }}>
+                  {listing.description}
+                </p>
+              </div>
+
+              {/* Tags */}
+              {tags && tags.length > 0 && (
+                <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f0eee8' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                    <span style={SECTION_LABEL}>{listingPlatform === 'etsy' ? 'Etsy tags' : 'TPT tags'}</span>
+                    <CopyButton text={tags.join(', ')} />
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {tags.map(tag => (
+                      <span key={tag} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '9999px', backgroundColor: tagBg, color: tagColor }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Price */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                  <span style={SECTION_LABEL}>Suggested price</span>
+                  <CopyButton text={listing.price_aud} />
+                </div>
+                <p style={{ fontSize: '22px', fontWeight: 600, color: 'var(--sb-sage-dark)', margin: 0, fontFamily: "'Playfair Display', serif" }}>
+                  {listing.price_aud}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* Canva brief panel */}
