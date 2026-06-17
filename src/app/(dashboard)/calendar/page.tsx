@@ -11,7 +11,7 @@ export default async function CalendarPage() {
 
   const { data: ideas } = await supabase
     .from('product_ideas')
-    .select('id, title, status, product_type, age_group, target_launch_date')
+    .select('id, title, status, product_type, age_group, target_launch_date, etsy_uploaded_at, tpt_uploaded_at')
     .eq('created_by', user.id)
     .not('target_launch_date', 'is', null)
     .order('target_launch_date', { ascending: true })
@@ -38,6 +38,8 @@ export default async function CalendarPage() {
     age_group: idea.age_group as string,
     target_launch_date: idea.target_launch_date as string,
     hasIllustration: illustratedSet.has(idea.id as string),
+    etsyUploaded: !!idea.etsy_uploaded_at,
+    tptUploaded: !!idea.tpt_uploaded_at,
   }))
 
   return (

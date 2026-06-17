@@ -95,6 +95,14 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
   const [canvaLoading, setCanvaLoading] = useState(false)
   const [canvaError, setCanvaError] = useState<string | null>(null)
 
+  const [etsyUploadedAt, setEtsyUploadedAt] = useState<string | null>(idea.etsy_uploaded_at ?? null)
+  const [tptUploadedAt, setTptUploadedAt] = useState<string | null>(idea.tpt_uploaded_at ?? null)
+  const [etsyUrl, setEtsyUrl] = useState(idea.etsy_listing_url ?? '')
+  const [tptUrl, setTptUrl] = useState(idea.tpt_listing_url ?? '')
+  const savedEtsyUrlRef = useRef(idea.etsy_listing_url ?? '')
+  const savedTptUrlRef = useRef(idea.tpt_listing_url ?? '')
+  const [urlSaving, setUrlSaving] = useState<'etsy' | 'tpt' | null>(null)
+
   const outline = idea.resource_outlines?.[0]
   const seo = idea.seo_data?.[0]
   const currentStatus = STATUS_STYLE[status]
@@ -208,6 +216,62 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
       setCanvaError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
       setCanvaLoading(false)
+    }
+  }
+
+  async function handleMarkUploaded(platform: 'etsy' | 'tpt') {
+    const ts = new Date().toISOString()
+    const setter = platform === 'etsy' ? setEtsyUploadedAt : setTptUploadedAt
+    setter(ts)
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [`${platform}_uploaded_at`]: ts }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(`Marked as uploaded to ${platform === 'etsy' ? 'Etsy' : 'TPT'}`)
+    } catch {
+      setter(null)
+      toast.error('Failed to save')
+    }
+  }
+
+  async function handleUndoUpload(platform: 'etsy' | 'tpt') {
+    const setAt = platform === 'etsy' ? setEtsyUploadedAt : setTptUploadedAt
+    const setUrl = platform === 'etsy' ? setEtsyUrl : setTptUrl
+    const savedUrlRef = platform === 'etsy' ? savedEtsyUrlRef : savedTptUrlRef
+    setAt(null)
+    setUrl('')
+    savedUrlRef.current = ''
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [`${platform}_uploaded_at`]: null, [`${platform}_listing_url`]: null }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      toast.error('Failed to undo')
+    }
+  }
+
+  async function handleUrlBlur(platform: 'etsy' | 'tpt', value: string) {
+    const savedRef = platform === 'etsy' ? savedEtsyUrlRef : savedTptUrlRef
+    if (value === savedRef.current) return
+    setUrlSaving(platform)
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [`${platform}_listing_url`]: value || null }),
+      })
+      if (!res.ok) throw new Error()
+      savedRef.current = value
+    } catch {
+      toast.error('Failed to save URL')
+    } finally {
+      setUrlSaving(null)
     }
   }
 
@@ -822,6 +886,110 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
             </div>
           )
         })()}
+      </div>
+
+      {/* Upload status panel */}
+      <div style={{ ...CARD, marginTop: '24px' }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 4px 0', color: 'var(--sb-charcoal)' }}>
+          Upload Status
+        </h2>
+        <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: '0 0 20px 0' }}>
+          Track which platforms this resource is live on
+        </p>
+
+        {(
+          [
+            { platform: 'etsy' as const, label: 'Etsy', uploadedAt: etsyUploadedAt, url: etsyUrl, setUrl: setEtsyUrl, badgeBg: '#D4A5A5', badgeColor: '#5a2020' },
+            { platform: 'tpt' as const, label: 'TPT', uploadedAt: tptUploadedAt, url: tptUrl, setUrl: setTptUrl, badgeBg: '#B5C9B7', badgeColor: '#1a2e1b' },
+          ] as const
+        ).map(({ platform, label, uploadedAt, url, setUrl, badgeBg, badgeColor }, i) => (
+          <div key={platform} style={{ paddingBottom: i === 0 ? '16px' : '0', marginBottom: i === 0 ? '16px' : '0', borderBottom: i === 0 ? '1px solid #f0eee8' : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Platform badge */}
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '28px', height: '28px', borderRadius: '6px',
+                backgroundColor: badgeBg, color: badgeColor,
+                fontSize: '11px', fontWeight: 700, flexShrink: 0,
+              }}>
+                {label[0]}
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--sb-charcoal)', minWidth: '36px' }}>{label}</span>
+
+              {uploadedAt ? (
+                <>
+                  {/* Uploaded state */}
+                  <span style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.65 }}>
+                    Uploaded{' '}
+                    {new Date(uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  <button
+                    onClick={() => handleUndoUpload(platform)}
+                    style={{
+                      fontSize: '12px', color: '#888', background: 'none', border: '1px solid #d8e0d9',
+                      borderRadius: '5px', padding: '2px 8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    Undo
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => handleMarkUploaded(platform)}
+                  style={{
+                    fontSize: '12px', fontWeight: 500, color: '#2a3d2b',
+                    backgroundColor: 'var(--sb-sage-light)', border: '1px solid #c0d0c1',
+                    borderRadius: '6px', padding: '5px 12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  Mark as uploaded
+                </button>
+              )}
+            </div>
+
+            {/* URL field — only shown once uploaded */}
+            {uploadedAt && (
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {url ? (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '12px', color: 'var(--sb-sage-dark)', textDecoration: 'underline', wordBreak: 'break-all' }}
+                  >
+                    {url}
+                  </a>
+                ) : null}
+                <input
+                  type="url"
+                  value={url}
+                  onChange={e => setUrl(e.target.value)}
+                  onBlur={e => handleUrlBlur(platform, e.target.value)}
+                  placeholder={`Paste ${label} listing URL…`}
+                  style={{
+                    flex: 1, minWidth: 0,
+                    fontSize: '12px', border: '1px solid #d8e0d9', borderRadius: '6px',
+                    padding: '5px 8px', outline: 'none', color: 'var(--sb-charcoal)',
+                    fontFamily: 'Inter, sans-serif', display: url ? 'none' : 'block',
+                  }}
+                  onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--sb-sage)'}
+                  onBlurCapture={e => e.currentTarget.style.boxShadow = 'none'}
+                />
+                {url && (
+                  <button
+                    onClick={() => setUrl('')}
+                    style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}
+                  >
+                    Edit
+                  </button>
+                )}
+                {urlSaving === platform && (
+                  <span style={{ fontSize: '11px', color: 'var(--sb-sage-dark)', flexShrink: 0 }}>Saving…</span>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Canva brief panel */}

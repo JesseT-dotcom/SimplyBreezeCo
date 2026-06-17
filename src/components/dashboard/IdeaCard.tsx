@@ -80,9 +80,21 @@ export default function IdeaCard({ idea }: { idea: ProductIdea }) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #f0eee8' }}>
-        <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '9999px', backgroundColor: status.bg, color: status.color }}>
-          {status.label}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '9999px', backgroundColor: status.bg, color: status.color }}>
+            {status.label}
+          </span>
+          {(idea.etsy_uploaded_at || idea.tpt_uploaded_at) && (
+            <div style={{ display: 'flex', gap: '3px' }}>
+              {idea.etsy_uploaded_at && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#D4A5A5', color: '#5a2020', fontSize: '10px', fontWeight: 700 }}>E</span>
+              )}
+              {idea.tpt_uploaded_at && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#B5C9B7', color: '#1a2e1b', fontSize: '10px', fontWeight: 700 }}>T</span>
+              )}
+            </div>
+          )}
+        </div>
         <span style={{ fontSize: '12px', color: 'var(--sb-charcoal)', opacity: 0.5 }}>
           {relativeDate(idea.created_at)}
         </span>

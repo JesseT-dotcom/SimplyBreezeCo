@@ -30,6 +30,10 @@ export interface ProductIdea {
   target_launch_date?: string | null
   listing_copy?: ListingCopyStore | null
   canva_brief?: CanvaBrief | null
+  etsy_uploaded_at?: string | null
+  tpt_uploaded_at?: string | null
+  etsy_listing_url?: string | null
+  tpt_listing_url?: string | null
   resource_outlines?: ResourceOutline[]
   seo_data?: SeoData[]
 }
@@ -66,6 +70,8 @@ export type CalendarIdea = {
   age_group: string
   target_launch_date: string
   hasIllustration: boolean
+  etsyUploaded: boolean
+  tptUploaded: boolean
 }
 
 export interface ResourceOutline {

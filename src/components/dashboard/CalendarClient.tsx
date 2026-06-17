@@ -73,6 +73,19 @@ export default function CalendarClient({ ideas }: { ideas: CalendarIdea[] }) {
 
   return (
     <div>
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '12px', color: 'var(--sb-charcoal)', opacity: 0.5 }}>Live on:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '3px', backgroundColor: '#D4A5A5', color: '#5a2020', fontSize: '9px', fontWeight: 700 }}>E</span>
+          <span style={{ fontSize: '12px', color: 'var(--sb-charcoal)', opacity: 0.65 }}>Etsy</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '3px', backgroundColor: '#B5C9B7', color: '#1a2e1b', fontSize: '9px', fontWeight: 700 }}>T</span>
+          <span style={{ fontSize: '12px', color: 'var(--sb-charcoal)', opacity: 0.65 }}>TPT</span>
+        </div>
+      </div>
+
       {/* Month navigation */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
         <button
@@ -204,9 +217,15 @@ export default function CalendarClient({ ideas }: { ideas: CalendarIdea[] }) {
                       {idea.hasIllustration && (
                         <span style={{ fontSize: '9px', flexShrink: 0 }}>📷</span>
                       )}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                         {idea.title}
                       </span>
+                      {idea.etsyUploaded && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '13px', height: '13px', borderRadius: '2px', backgroundColor: '#D4A5A5', color: '#5a2020', fontSize: '8px', fontWeight: 700, flexShrink: 0 }}>E</span>
+                      )}
+                      {idea.tptUploaded && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '13px', height: '13px', borderRadius: '2px', backgroundColor: '#B5C9B7', color: '#1a2e1b', fontSize: '8px', fontWeight: 700, flexShrink: 0 }}>T</span>
+                      )}
                     </Link>
                   )
                 })}

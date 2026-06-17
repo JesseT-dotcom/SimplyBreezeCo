@@ -45,6 +45,10 @@ const patchSchema = z.object({
   status: z.enum(['idea', 'in_progress', 'listed', 'archived']).optional(),
   notes: z.string().optional(),
   target_launch_date: z.string().nullable().optional(),
+  etsy_uploaded_at: z.string().nullable().optional(),
+  tpt_uploaded_at: z.string().nullable().optional(),
+  etsy_listing_url: z.string().nullable().optional(),
+  tpt_listing_url: z.string().nullable().optional(),
 })
 
 export async function PATCH(req: Request, { params }: RouteContext) {
