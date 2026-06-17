@@ -6,7 +6,32 @@ import { Check, ImageIcon, Loader2, Calendar, Copy, FileText, Palette } from 'lu
 import toast from 'react-hot-toast'
 import type { ProductIdea, IdeaStatus, PlatformListing, ListingCopyStore, CanvaBrief } from '@/lib/types'
 
-type IllusResult = { id: string; imageUrl: string; promptText: string }
+type IllusResult = { id: string; imageUrl: string; promptText: string; canvaKeywords: string[] }
+
+function IconCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  async function handle() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* clipboard unavailable */ }
+  }
+  return (
+    <button
+      onClick={handle}
+      title="Copy"
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'none', border: 'none', padding: '0 0 0 3px',
+        cursor: 'pointer', color: copied ? 'var(--sb-sage-dark)' : '#aaa',
+        lineHeight: 1, flexShrink: 0,
+      }}
+    >
+      {copied ? <Check size={10} /> : <Copy size={10} />}
+    </button>
+  )
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -583,10 +608,13 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
           <div>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 500, margin: '0 0 4px 0', color: 'var(--sb-charcoal)' }}>
-              Illustration
+              Illustration &amp; Canva Keywords
             </h2>
-            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: 0 }}>
-              Generate a SimplyBreeze-style illustration for this resource
+            <p style={{ fontSize: '13px', color: 'var(--sb-charcoal)', opacity: 0.55, margin: '0 0 3px 0' }}>
+              Visual direction and Canva Elements search terms
+            </p>
+            <p style={{ fontSize: '11px', color: 'var(--sb-charcoal)', opacity: 0.4, margin: 0 }}>
+              Mood reference only — not used in final product
             </p>
           </div>
           <button
@@ -674,51 +702,81 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
 
         {/* Success: two-column layout */}
         {!illusLoading && illus && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Image */}
-            <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #d8e0d9', aspectRatio: '1 / 1', backgroundColor: '#f5f3ee' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={illus.imageUrl}
-                alt="Generated SimplyBreeze illustration"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            </div>
-
-            {/* Prompt + actions */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <span style={SECTION_LABEL}>Illustration prompt</span>
-                <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--sb-charcoal)', margin: 0 }}>
-                  {illus.promptText}
-                </p>
+          <div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Image */}
+              <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #d8e0d9', aspectRatio: '1 / 1', backgroundColor: '#f5f3ee' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={illus.imageUrl}
+                  alt="Generated SimplyBreeze illustration"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto' }}>
-                <a
-                  href={illus.imageUrl}
-                  download={`${idea.title.replace(/\s+/g, '-').toLowerCase()}-illustration.jpg`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-block',
-                    backgroundColor: 'var(--sb-sage)',
-                    color: '#1a2e1b',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Download image
-                </a>
+              {/* Prompt + actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <span style={SECTION_LABEL}>Illustration prompt</span>
+                  <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--sb-charcoal)', margin: 0 }}>
+                    {illus.promptText}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto' }}>
+                  <a
+                    href={illus.imageUrl}
+                    download={`${idea.title.replace(/\s+/g, '-').toLowerCase()}-illustration.jpg`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-block',
+                      backgroundColor: 'var(--sb-sage)',
+                      color: '#1a2e1b',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Download image
+                  </a>
+                </div>
               </div>
             </div>
+
+            {/* Canva keywords */}
+            {illus.canvaKeywords.length > 0 && (
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #f0eee8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '12px' }}>
+                  <span style={SECTION_LABEL}>Canva Elements search terms</span>
+                  <CopyButton text={illus.canvaKeywords.join(', ')} />
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {illus.canvaKeywords.map(kw => (
+                    <span
+                      key={kw}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '2px',
+                        backgroundColor: '#EDE8DF',
+                        border: '1px solid #B5C9B7',
+                        borderRadius: '9999px',
+                        padding: '4px 8px 4px 12px',
+                        fontSize: '12px', color: '#3D3D3D',
+                      }}
+                    >
+                      {kw}
+                      <IconCopyButton text={kw} />
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
