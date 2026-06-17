@@ -30,6 +30,7 @@ export interface ProductIdea {
   target_launch_date?: string | null
   listing_copy?: ListingCopyStore | null
   canva_brief?: CanvaBrief | null
+  resource_content?: ResourceTheme[] | null
   etsy_uploaded_at?: string | null
   tpt_uploaded_at?: string | null
   etsy_listing_url?: string | null
@@ -60,6 +61,29 @@ export type CanvaBrief = {
   illustration_notes: string
   mood: string
   size_spec: string
+}
+
+export type ResourceCard = {
+  label: string
+  description: string
+}
+
+export type EylfOutcome = {
+  outcome: string
+  explanation: string
+}
+
+export type SupportingTextItem = {
+  item_type: string
+  content: string
+}
+
+export type ResourceTheme = {
+  theme_name: string
+  cards: ResourceCard[]
+  eylf_outcomes: EylfOutcome[]
+  how_to_use: string
+  supporting_text: SupportingTextItem[]
 }
 
 export type CalendarIdea = {

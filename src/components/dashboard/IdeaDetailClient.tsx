@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, ImageIcon, Loader2, Calendar, Copy, FileText, Palette } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { ProductIdea, IdeaStatus, PlatformListing, ListingCopyStore, CanvaBrief } from '@/lib/types'
+import ResourceContentPanel from './ResourceContentPanel'
 
 type IllusResult = { id: string; imageUrl: string; promptText: string; canvaKeywords: string[] }
 
@@ -1260,6 +1261,10 @@ export default function IdeaDetailClient({ idea }: { idea: ProductIdea }) {
             </div>
           </div>
         )}
+      </div>
+      {/* Resource content panel */}
+      <div style={{ backgroundColor: '#fff', border: '1px solid #d8e0d9', borderRadius: '12px', padding: '24px', marginTop: '24px' }}>
+        <ResourceContentPanel idea={idea} />
       </div>
     </div>
   )
