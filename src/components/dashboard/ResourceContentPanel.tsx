@@ -482,6 +482,27 @@ export default function ResourceContentPanel({ idea }: { idea: ProductIdea }) {
               onRegen={handleRegenTheme}
             />
           ))}
+
+          {/* Export links */}
+          <div style={{ marginTop: '6px', padding: '16px 20px', backgroundColor: '#FAF8F5', border: '1px solid #e8e4dc', borderRadius: '10px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--sb-charcoal)', opacity: 0.55, flexShrink: 0 }}>
+              Export link{content.length > 1 ? 's' : ''}
+            </span>
+            {content.length === 1 ? (
+              <CopyButton
+                text={`https://simply-breeze-co.vercel.app/resources/${idea.id}/export`}
+                label="Copy export link"
+              />
+            ) : (
+              content.map(t => (
+                <CopyButton
+                  key={t.theme_name}
+                  text={`https://simply-breeze-co.vercel.app/resources/${idea.id}/export?theme=${encodeURIComponent(t.theme_name)}`}
+                  label={`Copy ${t.theme_name} link`}
+                />
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
